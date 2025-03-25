@@ -1,8 +1,7 @@
-"""Event Detection Average Precision
-
+"""
+Event Detection Average Precision:
 An average precision metric for event detection in time series and
 video.
-
 """
 
 import numpy as np
@@ -10,19 +9,18 @@ import pandas as pd
 import pandas.api.types
 from typing import Dict, List, Tuple
 
-
+# Custom exception for participant-visible errors
 class ParticipantVisibleError(Exception):
     pass
 
-
-# Set some placeholders for global parameters
+# Global variables for the metric
 series_id_column_name = None
 time_column_name = None
 event_column_name = None
 score_column_name = None
 use_scoring_intervals = None
 
-
+# Define the metric
 def score(
         solution: pd.DataFrame,
         submission: pd.DataFrame,
@@ -213,13 +211,13 @@ def score(
     ... })
     >>> score(solution, submission, tolerances, **column_names, use_scoring_intervals=True)
     1.0
-
     """
+
     # Validate metric parameters
     assert len(tolerances) > 0, "Events must have defined tolerances."
-    assert set(tolerances.keys()) == set(solution[event_column_name]).difference({'start', 'end'}),        (f"Solution column {event_column_name} must contain the same events "
+    assert set(tolerances.keys()) == set(solution[event_column_name]).difference({'start', 'end'}), (f"Solution column {event_column_name} must contain the same events "
          "as defined in tolerances.")
-    assert pd.api.types.is_numeric_dtype(solution[time_column_name]),        f"Solution column {time_column_name} must be of numeric type."
+    assert pd.api.types.is_numeric_dtype(solution[time_column_name]), f"Solution column {time_column_name} must be of numeric type."
 
     # Validate submission format
     for column_name in [
@@ -229,7 +227,7 @@ def score(
         score_column_name,
     ]:
         if column_name not in submission.columns:
-            raise ParticipantVisibleError(f"Submission must have column '{target_name}'.")
+            raise ParticipantVisibleError(f"Submission must have column '{column_name}'.")
 
     if not pd.api.types.is_numeric_dtype(submission[time_column_name]):
         raise ParticipantVisibleError(
@@ -248,7 +246,6 @@ def score(
     globals()['use_scoring_intervals'] = use_scoring_intervals
 
     return event_detection_ap(solution, submission, tolerances)
-
 
 def filter_detections(
         detections: pd.DataFrame, intervals: pd.DataFrame
@@ -276,7 +273,6 @@ def filter_detections(
 
     return detections.loc[is_scored].reset_index(drop=True)
 
-
 def match_detections(
         tolerance: float, ground_truths: pd.DataFrame, detections: pd.DataFrame
 ) -> pd.DataFrame:
@@ -301,7 +297,6 @@ def match_detections(
     detections_sorted['matched'] = is_matched
 
     return detections_sorted
-
 
 def precision_recall_curve(
         matches: np.ndarray, scores: np.ndarray, p: int
@@ -332,6 +327,7 @@ def precision_recall_curve(
 
     # Final precision is 1 and final recall is 0
     return np.r_[precision[sl], 1], np.r_[recall[sl], 0], thresholds[sl]
+
 
 
 def average_precision_score(matches: np.ndarray, scores: np.ndarray, p: int) -> float:
