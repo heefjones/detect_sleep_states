@@ -21,16 +21,14 @@ score_column_name = None
 use_scoring_intervals = None
 
 # Define the metric
-def score(
-        solution: pd.DataFrame,
+def score(solution: pd.DataFrame,
         submission: pd.DataFrame,
         tolerances: Dict[str, List[float]],
         series_id_column_name: str,
         time_column_name: str,
         event_column_name: str,
         score_column_name: str,
-        use_scoring_intervals: bool = False,
-) -> float:
+        use_scoring_intervals: bool = False) -> float:
     """Event Detection Average Precision, an AUCPR metric for event detection in
     time series and video.
 
