@@ -9,11 +9,9 @@ import datetime as dt
 
 # machine learning
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split, KFold, cross_val_score, cross_val_predict
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import ConfusionMatrixDisplay, classification_report
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 from bayes_opt import BayesianOptimization
 
