@@ -10,7 +10,7 @@ import datetime as dt
 # machine learning
 from tqdm import tqdm
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import ConfusionMatrixDisplay, classification_report
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report, log_loss
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 from bayes_opt import BayesianOptimization
@@ -344,23 +344,17 @@ def train_val_split(series, events, n):
 
 def create_features(df):
     """
-    create features for each series.
+    Create features for each series.
 
-    args:
+    Args:
     - df: contains the series data with columns 'enmo', 'anglez'
 
-    returns:
+    Returns:
     - pl.dataframe: dataframe with new features added.
     """
 
-    # avoid modifying the original dataframe
-    df = df.clone()
-
-    # compute difference features as absolute diff - fill first nan with 0.
-    df = df.with_columns([
-        (pl.col('enmo').diff().abs().fill_null(0)).alias('enmo_diff'),
-        (pl.col('anglez').diff().abs().fill_null(0)).alias('anglez_diff')
-    ])
+    # convert to lazy frame for better performance
+    lazy_df = df.lazy()
 
     # list of windows in minutes
     windows = [1, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 60, 120, 180, 240, 480]
@@ -373,23 +367,24 @@ def create_features(df):
         # create rolling features for each column
         for col in ['enmo', 'anglez']:
             # rolling features for the original signal
-            df = df.with_columns([
+            lazy_df = lazy_df.with_columns([
                 pl.col(col).rolling_mean(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_mean'),
                 pl.col(col).rolling_max(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_max'),
                 pl.col(col).rolling_min(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_min'),
                 pl.col(col).rolling_std(window_size, min_samples=1, center=True).fill_nan(0).alias(f'{col}_{m}m_std')
             ])
 
-            # rolling mean and max for the signal's diff (captures volatility)
+            # rolling features for the signal's diff (captures volatility)
             diff_col = f'{col}_diff'
-            df = df.with_columns([
+            lazy_df = lazy_df.with_columns([
                 pl.col(diff_col).rolling_mean(window_size, min_samples=1, center=True).abs().alias(f'{diff_col}_{m}m_mean'),
                 pl.col(diff_col).rolling_max(window_size, min_samples=1, center=True).abs().alias(f'{diff_col}_{m}m_max'),
                 pl.col(diff_col).rolling_min(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_min'),
                 pl.col(diff_col).rolling_std(window_size, min_samples=1, center=True).fill_nan(0).alias(f'{diff_col}_{m}m_std')
             ])
 
-    return df
+    # collect the results back into a DataFrame
+    return lazy_df.collect()
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
