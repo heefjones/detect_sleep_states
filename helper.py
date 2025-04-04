@@ -210,45 +210,42 @@ def plot_sleep_cycles(user_rows, events):
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
-def split_sleep_awake_intervals(df):
+def label_data(df):
     """
-    Split the data into sleep and awake intervals.
-    """
+    Create an "asleep" label column (1 for asleep, 0 for awake) based on the "event" column.
 
-    # sort
-    df = df.sort(["series_id", "step"])
+    Args:
+    - df (pl.DataFrame): DataFrame containing sleep data.
+
+    Returns:
+    - (pl.DataFrame): DataFrame with the "asleep" label column added.
+    """
 
     # create a 'sleep_indicator' column: +1 if event == "onset", -1 if event == "wakeup", else 0
-    df = df.with_columns(
+    df = df.sort(["series_id", "step"]).with_columns(
         pl.when(pl.col("event") == "onset")
         .then(1)
         .when(pl.col("event") == "wakeup")
         .then(-1)
         .otherwise(0)
-        .alias("sleep_indicator")
-    )
+        .alias("sleep_indicator"))
 
     # create "day" column
-    df = df.with_columns(pl.lit(1).alias("day"))
-    df = df.with_columns(
+    df = df.with_columns(pl.lit(1).alias("day")).with_columns(
         pl.when(pl.col("sleep_indicator") == 1)
           .then(1)
           .otherwise(0)
           .cum_sum().over("series_id")
-          .alias("day")
-    )
+          .alias("day"))
 
     # do a cumulative sum of 'sleep_indicator' so that rows after an "onset" have cumsum > 0 until we hit a "wakeup"
     df = df.with_columns(pl.col("sleep_indicator").cum_sum().over("series_id").alias("sleep_cumsum"))
 
-    # create a boolean column 'is_sleep' that is True if sleep_cumsum > 0
-    df = df.with_columns((pl.col("sleep_cumsum") > 0).alias("is_sleep"))
+    # create a boolean column 'asleep' that is True if sleep_cumsum > 0
+    df = df.with_columns((pl.col("sleep_cumsum") > 0).alias("asleep"))
 
-    # split into two DataFrames: one for sleep rows, one for awake rows
-    df_sleep = df.filter(pl.col("is_sleep"))
-    df_awake = df.filter(~pl.col("is_sleep"))
-
-    return df_sleep, df_awake
+    # drop old columns
+    return df.drop(['event', 'sleep_indicator', 'sleep_cumsum'])
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -388,43 +385,6 @@ def create_features(df):
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
-def make_train_dataset(features):
-    """
-    Create binary labels for training data. 0 = awake, 1 = asleep.
-
-    Args:
-    - features (pl.DataFrame): Series data.
-
-    Returns:
-    - x (pl.DataFrame): Features.
-    - y (np.array): Labels.
-    """
-
-    # sort by series_id and step
-    features = (features.sort(["series_id", "step"]).with_columns(
-            # compute "state_change": 1 when event is "onset", 0 when "wakeup", else null.
-            pl.when(pl.col("event") == "onset").then(1)
-              .when(pl.col("event") == "wakeup").then(0)
-              .otherwise(None)
-              .alias("state_change"))
-        .with_columns(
-            # forward-fill the nulls within each series (using over("series_id"))
-            pl.col("state_change")
-              .fill_null(strategy="forward")
-              .over("series_id")
-              .fill_null(0) # fill any remaining nulls (for the first row in a group) with 0
-              .alias("asleep")))
-
-    # features
-    x = features.drop(['asleep', 'event', 'state_change'])
-    
-    # extract the asleep column as a 1D array
-    y = features.select("asleep").to_numpy().ravel()
-
-    return x, y
-
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
-
 def batch_data(data, batch_size=10_000_000):
     """
     Create batches of data for training.
@@ -456,8 +416,8 @@ def batch_data(data, batch_size=10_000_000):
         # normalize
         features_norm = features.with_columns([((pl.col(col) - mean_dict[col]) / std_dict[col]).cast(pl.Float32) for col in norm_cols])
 
-        # generate training data (X and y) from the batch
-        yield make_train_dataset(features_norm)
+        # generate normalized features from the batch
+        yield features_norm
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
