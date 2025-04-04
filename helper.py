@@ -385,39 +385,7 @@ def create_features(df):
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
-def batch_data(data, batch_size=10_000_000):
-    """
-    Create batches of data for training.
 
-    Args:
-    - data (pl.DataFrame): Data to be batched.
-    - batch_size (int): Size of each batch.
-
-    Returns:
-    - (generator): Yields batches of data.
-    """
-
-    # iterate through batches
-    for i in range(0, len(data), batch_size):
-        # get batch
-        batch = data[i:i + batch_size]
-
-        # create features
-        features = create_features(batch)
-
-        # define cols to be normalized
-        non_norm_cols = ['series_id', 'step', 'date', 'hour', 'event']
-        norm_cols = [col for col in features.columns if col not in non_norm_cols]
-
-        # compute mean & std, convert to dictionaries
-        mean_dict = features.select(norm_cols).mean().to_dicts()[0]
-        std_dict = features.select(norm_cols).std().to_dicts()[0]
-
-        # normalize
-        features_norm = features.with_columns([((pl.col(col) - mean_dict[col]) / std_dict[col]).cast(pl.Float32) for col in norm_cols])
-
-        # generate normalized features from the batch
-        yield features_norm
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
