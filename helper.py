@@ -25,7 +25,7 @@ sns.set(style='whitegrid', font='Average')
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # global vars
-ROOT = './data/'
+root = 'data/'
 
 # set numpy seed
 SEED = 9
@@ -34,6 +34,8 @@ np.random.seed(SEED)
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # eda.ipynb
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 def show_shape_and_nulls(df):
     """
@@ -237,14 +239,10 @@ def split_sleep_awake_intervals(df):
     )
 
     # do a cumulative sum of 'sleep_indicator' so that rows after an "onset" have cumsum > 0 until we hit a "wakeup"
-    df = df.with_columns(
-        pl.col("sleep_indicator").cum_sum().over("series_id").alias("sleep_cumsum")
-    )
+    df = df.with_columns(pl.col("sleep_indicator").cum_sum().over("series_id").alias("sleep_cumsum"))
 
     # create a boolean column 'is_sleep' that is True if sleep_cumsum > 0
-    df = df.with_columns(
-        (pl.col("sleep_cumsum") > 0).alias("is_sleep")
-    )
+    df = df.with_columns((pl.col("sleep_cumsum") > 0).alias("is_sleep"))
 
     # split into two DataFrames: one for sleep rows, one for awake rows
     df_sleep = df.filter(pl.col("is_sleep"))
@@ -295,7 +293,6 @@ def plot_mean_anglez_enmo(sleep, awake):
     lines = [line1, line2, line3, line4]
     labels = [line.get_label() for line in lines]
     ax.legend(lines, labels, loc='upper left', bbox_to_anchor=(1.1, 1))
-
     plt.title('Average Anglez and Enmo per Day, "Sleep" and "Awake" Segments', fontsize=14, fontweight='bold')
     plt.tight_layout()
     plt.show()
@@ -303,6 +300,8 @@ def plot_mean_anglez_enmo(sleep, awake):
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 # preds.ipynb
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 def train_val_split(series, events, n):
     """
@@ -353,6 +352,9 @@ def create_features(df):
     - pl.dataframe: dataframe with new features added.
     """
 
+    # sort by series_id and step
+    df = df.sort(["series_id", "step"])
+
     # convert to lazy frame for better performance
     lazy_df = df.lazy()
 
@@ -371,8 +373,7 @@ def create_features(df):
                 pl.col(col).rolling_mean(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_mean'),
                 pl.col(col).rolling_max(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_max'),
                 pl.col(col).rolling_min(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_min'),
-                pl.col(col).rolling_std(window_size, min_samples=1, center=True).fill_nan(0).alias(f'{col}_{m}m_std')
-            ])
+                pl.col(col).rolling_std(window_size, min_samples=1, center=True).fill_nan(0).alias(f'{col}_{m}m_std')])
 
             # rolling features for the signal's diff (captures volatility)
             diff_col = f'{col}_diff'
@@ -380,8 +381,7 @@ def create_features(df):
                 pl.col(diff_col).rolling_mean(window_size, min_samples=1, center=True).abs().alias(f'{diff_col}_{m}m_mean'),
                 pl.col(diff_col).rolling_max(window_size, min_samples=1, center=True).abs().alias(f'{diff_col}_{m}m_max'),
                 pl.col(diff_col).rolling_min(window_size, min_samples=1, center=True).abs().alias(f'{col}_{m}m_min'),
-                pl.col(diff_col).rolling_std(window_size, min_samples=1, center=True).fill_nan(0).alias(f'{diff_col}_{m}m_std')
-            ])
+                pl.col(diff_col).rolling_std(window_size, min_samples=1, center=True).fill_nan(0).alias(f'{diff_col}_{m}m_std')])
 
     # collect the results back into a DataFrame
     return lazy_df.collect()
@@ -393,95 +393,71 @@ def make_train_dataset(features):
     Create binary labels for training data. 0 = awake, 1 = asleep.
 
     Args:
-    - features: contains the series data with columns 'enmo', 'anglez'
+    - features (pl.DataFrame): Series data.
 
     Returns:
-    - x: dataframe with normalized features.
-    - y: 1d array of labels.
+    - x (pl.DataFrame): Features.
+    - y (np.array): Labels.
     """
 
-    # classify columns into strings and features (to be normalized)
-    str_cols = ['series_id', 'step', 'date', 'hour', 'event']
-    feature_cols = [col for col in features.columns if col not in str_cols]
+    # sort by series_id and step
+    features = (features.sort(["series_id", "step"]).with_columns(
+            # compute "state_change": 1 when event is "onset", 0 when "wakeup", else null.
+            pl.when(pl.col("event") == "onset").then(1)
+              .when(pl.col("event") == "wakeup").then(0)
+              .otherwise(None)
+              .alias("state_change"))
+        .with_columns(
+            # forward-fill the nulls within each series (using over("series_id"))
+            pl.col("state_change")
+              .fill_null(strategy="forward")
+              .over("series_id")
+              .fill_null(0) # fill any remaining nulls (for the first row in a group) with 0
+              .alias("asleep")))
 
-    # get all series ids of the series
-    series_ids = features.select("series_id").unique().to_series().to_list()
-
-    # init lists to store data
-    x_list = []
-    y_list = []
-
-    # helper function to compute the asleep label for a given step based on intervals
-    def compute_asleep(step, intervals):
-        for onset, wakeup in intervals:
-            if step >= onset and step < wakeup:
-                return 1
-        return 0
-
-    # iterate through each user
-    for sid in tqdm(series_ids, desc="processing users"):
-        # get data for the user, sort by step
-        user_rows = features.filter(pl.col("series_id") == sid).clone().sort("step")
-
-        # append user's data to the full dataset
-        x_list.append(user_rows.select(str_cols + feature_cols))
-
-        # get onsets and wakeups as lists
-        onsets = user_rows.filter(pl.col("event") == "onset").select("step").to_series().to_list()
-        wakeups = user_rows.filter(pl.col("event") == "wakeup").select("step").to_series().to_list()
-
-        # pair onsets and wakeups; assume same length and paired order
-        intervals = list(zip(onsets, wakeups))
-
-        # create 'asleep' column for the user using an apply on 'step'
-        y_user = user_rows.select("step").with_columns(pl.col("step").map_elements(lambda s: compute_asleep(s, intervals), return_dtype=pl.Int8).alias("asleep"))
-        y_list.append(y_user["asleep"])
-
-    # combine all users' data
-    x = pl.concat(x_list)
-    y_series = pl.concat(y_list)
+    # features
+    x = features.drop(['asleep', 'event', 'state_change'])
     
-    # flatten y to a 1d numpy array
-    y = y_series.to_numpy().ravel()
+    # extract the asleep column as a 1D array
+    y = features.select("asleep").to_numpy().ravel()
 
     return x, y
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
-def normalize_features(x, scaler, fit=False):
+def batch_data(data, batch_size=10_000_000):
     """
-    Normalize the features using Standard.
+    Create batches of data for training.
 
     Args:
-    - x: Polars Dataframe containing features.
-    - scaler: Scikit-learn scaler object (e.g., StandardScaler, MinMaxScaler).
+    - data (pl.DataFrame): Data to be batched.
+    - batch_size (int): Size of each batch.
 
     Returns:
-    - x: DataFrame with normalized features.
-    - scaler: Fitted scaler object (if fit=True).
+    - (generator): Yields batches of data.
     """
 
-    # define cols to be normalized
-    non_norm_cols = ['series_id', 'step', 'date', 'hour', 'event']
-    norm_cols = [col for col in x.columns if col not in non_norm_cols]
+    # iterate through batches
+    for i in range(0, len(data), batch_size):
+        # get batch
+        batch = data[i:i + batch_size]
 
-    # fit the scaler if fit is True
-    if fit:
-        # fit the scaler on the features
-        scaler.fit(x.select(norm_cols).to_numpy())
+        # create features
+        features = create_features(batch)
 
-    # convert to numpy, transform, and replace columns in polars
-    scaled_values = scaler.transform(x.select(norm_cols).to_numpy())
+        # define cols to be normalized
+        non_norm_cols = ['series_id', 'step', 'date', 'hour', 'event']
+        norm_cols = [col for col in features.columns if col not in non_norm_cols]
 
-    # create a new polars dataframe with the normalized columns
-    scaled_df = pl.DataFrame(scaled_values, schema=norm_cols)
+        # compute mean & std, convert to dictionaries
+        mean_dict = features.select(norm_cols).mean().to_dicts()[0]
+        std_dict = features.select(norm_cols).std().to_dicts()[0]
 
-    # replace normalized columns in original dataframe
-    x = x.with_columns(scaled_df)
+        # normalize
+        features_norm = features.with_columns([((pl.col(col) - mean_dict[col]) / std_dict[col]).cast(pl.Float32) for col in norm_cols])
 
-    if fit:
-        return x, scaler
-    return x
+        # generate training data (X and y) from the batch
+        yield make_train_dataset(features_norm)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
