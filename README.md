@@ -28,19 +28,19 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
 **Final Feature Count:** 245 features.
 
 ## Modeling
-- **Labeling:** 
+**Labeling:** 
   - Mark data between sleep onset and wake-up as "1" (sleep) and all others as "0" (awake).
-- **Classifier:** 
+**Classifier:** 
   - XGBoost Classifier.
-- **Training Results (10% random subset):** 
+**Training Results (10% random subset):** 
   - Accuracy: 96%.
-- **Post-Processing:** 
+**Post-Processing:** 
   - Pruned sleep periods shorter than 30 minutes.
   - Combined sleep windows within 2 hours of each other.
   - Retained only the longest sleep bout per night.
-- **Evaluation Metric:** 
+**Evaluation Metric:** 
   - Average precision of detected events (averaged over timestamp error tolerance thresholds and event classes).
-- **Final Results:**
+**Final Results:**
   - **Training Data:** Average Precision = 0..
   - **Test Data (Competition):** Average Precision = 0..
 
