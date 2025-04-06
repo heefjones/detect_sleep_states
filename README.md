@@ -1,8 +1,5 @@
 # Child Mind Institute - Detect Sleep States
-
 This project uses accelerometer data to predict sleep onset and wake-up events. It was developed as part of a [Kaggle competition](https://www.kaggle.com/competitions/child-mind-institute-detect-sleep-states).
-
----
 
 ## Data
 - **Series Data**
@@ -19,8 +16,6 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
     - **Total Rows:** ~14.5 thousand.
     - **Missing Values:** 4,923 missing timesteps (~2,462 nights).
 
----
-
 ## Feature Engineering
 1. **Base Features:** 
    - Hour, z-angle, and enmo.
@@ -31,8 +26,6 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
    - Windows used (in minutes): 1, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 60, 120, 180, 240, and 480.
 4. **Final Feature Count:** 
    - 245 features.
-
----
 
 ## Modeling
 - **Labeling:** 
@@ -51,16 +44,12 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
   - **Training Data:** Average Precision = 0..
   - **Test Data (Competition):** Average Precision = 0..
 
----
-
 ## Repository Contents
 - **eda.ipynb:** Exploratory data analysis and visualizations.
 - **preds.ipynb:** Feature engineering, model training, and final submission.
 - **helper.py:** Custom functions for data processing, visualization, and model training.
 - **metric.py:** Contains "score" function used to compute average precision.
 - **xgb.json:** The fitted weights for the XGB Classifier that was trained on all 127m rows.
-
----
 
 ## Repository Structure
 ```
