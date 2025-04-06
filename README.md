@@ -33,7 +33,7 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
 **Classifier:** XGBoost Classifier.
     
 **Training Results (10% random subset):** 
-- Accuracy: 96%.
+- Accuracy: 96%
 
 **Post-Processing:** 
 - Pruned sleep periods shorter than 30 minutes.
@@ -44,8 +44,8 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
 - Average precision of detected events (averaged over timestamp error tolerance thresholds and event classes).
 
 **Final Results:**
-- **Training Data:** Average Precision = 0..
-- **Test Data (Competition):** Average Precision = 0..
+- **Training Data:** Average Precision = 0.058
+- **Test Data (Competition):** Average Precision = 0.
 
 ## Repository Contents
 - **eda.ipynb:** Exploratory data analysis and visualizations.
