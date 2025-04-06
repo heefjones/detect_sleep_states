@@ -12,20 +12,20 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
 - **Missing Values:** None.
 
 ### Events Data
-    - **Content:** Timestamps for sleep onset and wake-up events.
-    - **Total Rows:** ~14.5 thousand.
-    - **Missing Values:** 4,923 missing timesteps (~2,462 nights).
+- **Content:** Timestamps for sleep onset and wake-up events.
+- **Total Rows:** ~14.5 thousand.
+- **Missing Values:** 4,923 missing timesteps (~2,462 nights).
 
 ## Feature Engineering
 1. **Base Features:** 
-- Hour, z-angle, and enmo.
+    - Hour, z-angle, and enmo.
 2. **Differencing:** 
-- Compute the difference of z-angle and enmo for each 5-second interval.
+    - Compute the difference of z-angle and enmo for each 5-second interval.
 3. **Window Aggregations:** 
-- Calculate minimum, maximum, mean, and standard deviation for both original and differenced features.
-- Windows used (in minutes): 1, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 60, 120, 180, 240, and 480.
-4. **Final Feature Count:** 
-- 245 features.
+    - Calculate minimum, maximum, mean, and standard deviation for both original and differenced features.
+    - Windows used (in minutes): 1, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 60, 120, 180, 240, and 480.
+
+**Final Feature Count:** 245 features.
 
 ## Modeling
 - **Labeling:** 
