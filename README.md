@@ -1,43 +1,66 @@
 # Child Mind Institute - Detect Sleep States
-This [Kaggle competition](https://www.kaggle.com/competitions/child-mind-institute-detect-sleep-states) tasked me to use accelerometer data to predict sleep onset and wake-up events.
+
+This project uses accelerometer data to predict sleep onset and wake-up events. It was developed as part of a [Kaggle competition](https://www.kaggle.com/competitions/child-mind-institute-detect-sleep-states).
+
+---
 
 ## Data
+- **Series Data**
+  - **Users:** 277 unique individuals.
+  - **Timesteps:** 5-second intervals; each user has hundreds of thousands of readings.
+  - **Features:** 
+    - **z-angle:** Arm’s z-angle relative to the body’s vertical axis.
+    - **enmo:** Standard measure of arm acceleration.
+  - **Total Rows:** ~127.9 million.
+  - **Missing Values:** None.
 
-### 1. Series
-Contained accelerometer data from 277 unique users. Each row represented a reading for a 5-second timestep. Thus, each user had hundreds of thousands of rows. These logs contained 2 features: __z-angle__ (refers to the z-angle of the arm relative to the body's vertical axis) and __enmo__ (a standard measure of arm acceleration).
-- **Rows**: ~127.9 million.
-- **Null Values**: None.
+- **Events Data**
+    - **Content:** Timestamps for sleep onset and wake-up events.
+    - **Total Rows:** ~14.5 thousand.
+    - **Missing Values:** 4,923 missing timesteps (~2,462 nights).
 
-### 2. Events
-Contained sleep onset and wake-up events for each user, with specific timestamps for each. Null values were recorded for the timestep if the user was not wearing the device (or the device died).
-- **Rows**: ~14.5 thousand.
-- **Null Values**: 4923 in the "timestep" column. This indicated that we were missing roughly 2462 nights (onset, wake-up pairs) of sleep.
+---
 
 ## Feature Engineering
-From the original data, 3 features were used: hour, z-angle, and enmo.
+1. **Base Features:** 
+   - Hour, z-angle, and enmo.
+2. **Differencing:** 
+   - Compute the difference of z-angle and enmo for each 5-second interval.
+3. **Window Aggregations:** 
+   - Calculate minimum, maximum, mean, and standard deviation for both original and differenced features.
+   - Windows used (in minutes): 1, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 60, 120, 180, 240, and 480.
+4. **Final Feature Count:** 
+   - 245 features.
 
-Then, z-angle and enmo were differenced for each row (5-second intervals) and these differences were used as features. Finally, minimum, maximum, mean, and standard deviation features of both z-angle and enmo were computed across [1, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 60, 120, 180, 240, 480] minute (15 total) windows. The 2 differenced features were also aggregated across these windows. This resulted in __245__ final features.
+---
 
 ## Modeling
-First, the data between onset and wake-up events was flagged with "1" to indicate sleep, while all other data was flagged with "0" to indicate awake. The binary classifier was trained to predict at every 5-second timestep whether the user was sleeping or awake.
+- **Labeling:** 
+  - Mark data between sleep onset and wake-up as "1" (sleep) and all others as "0" (awake).
+- **Classifier:** 
+  - XGBoost Classifier.
+- **Training Results (10% random subset):** 
+  - Accuracy: 96%.
+- **Post-Processing:** 
+  - Pruned sleep periods shorter than 30 minutes.
+  - Combined sleep windows within 2 hours of each other.
+  - Retained only the longest sleep bout per night.
+- **Evaluation Metric:** 
+  - Average precision of detected events (averaged over timestamp error tolerance thresholds and event classes).
+- **Final Results:**
+  - **Training Data:** Average Precision = 0..
+  - **Test Data (Competition):** Average Precision = 0..
 
-I first tested model performance on a random 10% subset (28 of the 277 user's data). A default XGBoost Classifier achieved 96% accuracy on this subset.
+---
 
-The model did have a tendency to predict multiple onset and wake events in the same night (predicting many short bouts of sleep), but the competition rules explicitly state that "A single sleep period must be at least 30 minutes in length" and that "The longest sleep window during the night is the only one which is recorded". Thus, I pruned short sleep periods that were under 30 minutes in duration and also combined windows that were within 30 minutes of one another. If there were still multiple windows relatively close in a single night, I took the longest bout for each night. Submissions were evaluated on the [average precision](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.average_precision_score.html) of detected events, averaged over timestamp error tolerance thresholds, averaged over event classes. 
+## Repository Contents
+- **eda.ipynb:** Exploratory data analysis and visualizations.
+- **preds.ipynb:** Feature engineering, model training, and final submission.
+- **helper.py:** Custom functions for data processing, visualization, and model training.
+- **metric.py:** Contains "score" function used to compute average precision.
+- **xgb.json:** The fitted weights for the XGB Classifier that was trained on all 127m rows.
 
-Here were the final results on the training data:
-- **Model**: XGBoost Classifier  
-- **Average Precision**: 0.71
-
-Here were the final competition results (test data):
-- **Model**: XGBoost Classifier  
-- **Average Precision**: 0.62
-
-## Files
-- 📊 eda.ipynb – EDA and visualization.
-- 🤖 preds.ipynb – Feature engineering, model training, and final submission.
-- 🛠️ helper.py – Custom functions for data processing, visualization, feature engineering, and model training.
-- 📈 submission.csv – Final predictions on the test data.
+---
 
 ## Repository Structure
 ```
@@ -45,6 +68,6 @@ Here were the final competition results (test data):
 ├── eda.ipynb
 ├── preds.ipynb
 ├── helper.py
-├── submission.csv
+├── xgb.json
 └── README.md
 ```
