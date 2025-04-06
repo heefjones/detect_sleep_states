@@ -1,19 +1,16 @@
 # data science
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-import seaborn as sns
 import polars as pl
 import pandas as pd
 import datetime as dt
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import seaborn as sns
 
 # machine learning
 from tqdm import tqdm
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import ConfusionMatrixDisplay, classification_report, log_loss
-from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report
 from xgboost import XGBClassifier
-from bayes_opt import BayesianOptimization
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -355,9 +352,9 @@ def create_features(df):
     lazy_df = df.lazy()
 
     # define the rolling aggregation functions
-    agg_funcs = {"min":  lambda col, w: pl.col(col).rolling_min(w, min_samples=1, center=True).abs(), 
-                 "max":  lambda col, w: pl.col(col).rolling_max(w, min_samples=1, center=True).abs(), 
-                 "mean": lambda col, w: pl.col(col).rolling_mean(w, min_samples=1, center=True).abs(), 
+    agg_funcs = {"min":  lambda col, w: pl.col(col).rolling_min(w, min_samples=1, center=True), 
+                 "max":  lambda col, w: pl.col(col).rolling_max(w, min_samples=1, center=True), 
+                 "mean": lambda col, w: pl.col(col).rolling_mean(w, min_samples=1, center=True), 
                  "std":  lambda col, w: pl.col(col).rolling_std(w, min_samples=1, center=True).fill_nan(0)}
 
     # list of windows in minutes
