@@ -29,9 +29,9 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
 
 ## Modeling
 **Labeling:** 
-  - Mark data between sleep onset and wake-up as "1" (sleep) and all others as "0" (awake).
+    - Mark data between sleep onset and wake-up as "1" (sleep) and all others as "0" (awake).
 **Classifier:** 
-  - XGBoost Classifier.
+    - XGBoost Classifier.
 **Training Results (10% random subset):** 
   - Accuracy: 96%.
 **Post-Processing:** 
