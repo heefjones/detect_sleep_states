@@ -1,3 +1,5 @@
-# ignore large data files
+# large data files
 data/
+
+# jupyter checkpoints
 __pycache__/
