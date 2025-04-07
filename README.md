@@ -45,7 +45,7 @@ This project uses accelerometer data to predict sleep onset and wake-up events. 
 
 **Final Results:**
 - **Training Data:** Average Precision = 0.058
-- **Test Data (Competition):** Average Precision = 0.
+- **Test Data (Competition):** Average Precision = 0.092
 
 ## Repository Contents
 - **eda.ipynb:** Exploratory data analysis and visualizations.
